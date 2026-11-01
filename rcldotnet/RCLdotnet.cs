@@ -1080,6 +1080,17 @@ namespace ROS2
                 WriteToMessageHandle(response, responseHandle);
 
                 RCLRet ret = RCLdotnetDelegates.native_rcl_send_response(service.Handle, requestHeaderHandle, responseHandle);
+
+                // Like rclcpp's Service::send_response: rmw returns Timeout when the client's
+                // response reader is not matched (yet/anymore). Drop the response instead of
+                // throwing out of SpinOnce and stopping the node.
+                if (ret == RCLRet.Timeout)
+                {
+                    var exception = RCLExceptionHelper.CreateFromReturnValue(ret, $"{nameof(RCLdotnetDelegates.native_rcl_send_response)}() failed, dropping the response.");
+                    Console.Error.WriteLine($"[WARN] [rcldotnet]: {exception.Message}");
+                    return;
+                }
+
                 RCLExceptionHelper.CheckReturnValue(ret, $"{nameof(RCLdotnetDelegates.native_rcl_send_response)}() failed.");
             }
         }
